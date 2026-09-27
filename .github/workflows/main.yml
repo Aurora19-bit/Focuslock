@@ -19,20 +19,26 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Grant Execute Permission to Gradlew
-      run: |
-        if [ ! -f gradlew ]; then gradle wrapper; fi
-        chmod +x gradlew
-
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: |
+        # 1. Find where settings.gradle or settings.gradle.kts is located
+        SETTINGS_FILE=$(find . -maxdepth 3 -name "settings.gradle*" | head -n 1)
+        TARGET_DIR=$(dirname "$SETTINGS_FILE")
+        
+        echo "Found Android project inside: $TARGET_DIR"
+        cd "$TARGET_DIR"
 
-    - name: Upload APK Artifact
+        # 2. Generate Gradle wrapper if missing
+        if [ ! -f "gradlew" ]; then
+          gradle wrapper --gradle-version 8.7
+        fi
+        
+        chmod +x gradlew
+        ./gradlew assembleDebug --stacktrace
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/*.apk
+        name: FocusLock-APK
+        path: "**/build/outputs/apk/debug/*.apk"
         
