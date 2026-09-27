@@ -19,39 +19,41 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Reorganize Flat Files and Build
+    - name: Configure AndroidX, Structure, and Build
       run: |
-        echo "Organizing flattened Android structure..."
-        
-        # 1. Create standard Android directory tree
+        # 1. Enable AndroidX in gradle.properties
+        echo "android.useAndroidX=true" > gradle.properties
+        echo "android.nonTransitiveRClass=true" >> gradle.properties
+        echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
+
+        # 2. Build directory layout
         mkdir -p app/src/main/java/com/vidhya/focuslock
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/xml
 
-        # 2. Move Kotlin source files
+        # 3. Move Kotlin sources
         mv AppListAdapter.kt BlockActivity.kt BootReceiver.kt FocusAccessibilityService.kt \
            MainActivity.kt MathPuzzleActivity.kt SessionAdminReceiver.kt SessionManager.kt \
            SessionTimerService.kt app/src/main/java/com/vidhya/focuslock/ 2>/dev/null || true
 
-        # 3. Move Layout XML files
+        # 4. Move Layouts
         mv activity_block.xml activity_main.xml activity_puzzle.xml item_app.xml \
            app/src/main/res/layout/ 2>/dev/null || true
 
-        # 4. Move Resource Values XML files
+        # 5. Move Resources
         mv strings.xml themes.xml colors.xml \
            app/src/main/res/values/ 2>/dev/null || true
 
-        # 5. Move Configuration XML files
+        # 6. Move XML Configs
         mv accessibility_service_config.xml device_admin_receiver.xml \
            app/src/main/res/xml/ 2>/dev/null || true
 
-        # 6. Move Manifest
+        # 7. Move Manifest
         mv AndroidManifest.xml app/src/main/ 2>/dev/null || true
 
-        # 7. Configure app-level build.gradle.kts if missing
-        if [ ! -f "app/build.gradle.kts" ]; then
-          cat << 'EOF' > app/build.gradle.kts
+        # 8. Create app-level build configuration
+        cat << 'EOF' > app/build.gradle.kts
         plugins {
             id("com.android.application")
             id("org.jetbrains.kotlin.android")
@@ -91,9 +93,8 @@ jobs:
             implementation("androidx.constraintlayout:constraintlayout:2.1.4")
         }
         EOF
-        fi
 
-        # 8. Generate Gradle wrapper and build
+        # 9. Build with Gradle 8.7
         gradle wrapper --gradle-version 8.7
         chmod +x gradlew
         ./gradlew assembleDebug
@@ -103,3 +104,4 @@ jobs:
       with:
         name: FocusLock-APK
         path: "app/build/outputs/apk/debug/*.apk"
+        
