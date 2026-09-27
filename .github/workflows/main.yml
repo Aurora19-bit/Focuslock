@@ -19,7 +19,7 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Configure AndroidX, Structure, and Build
+    - name: Configure AndroidX, Structure, Fix Icons, and Build
       run: |
         # 1. Enable AndroidX in gradle.properties
         echo "android.useAndroidX=true" > gradle.properties
@@ -31,6 +31,7 @@ jobs:
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/xml
+        mkdir -p app/src/main/res/mipmap-anydpi-v26
 
         # 3. Move Kotlin sources
         mv AppListAdapter.kt BlockActivity.kt BootReceiver.kt FocusAccessibilityService.kt \
@@ -49,8 +50,10 @@ jobs:
         mv accessibility_service_config.xml device_admin_receiver.xml \
            app/src/main/res/xml/ 2>/dev/null || true
 
-        # 7. Move Manifest
+        # 7. Move Manifest and replace missing custom launcher icon with default system icon
         mv AndroidManifest.xml app/src/main/ 2>/dev/null || true
+        sed -i 's/@mipmap\/ic_launcher/@android:drawable\/sym_def_app_icon/g' app/src/main/AndroidManifest.xml
+        sed -i 's/@mipmap\/ic_launcher_round/@android:drawable\/sym_def_app_icon/g' app/src/main/AndroidManifest.xml
 
         # 8. Create app-level build configuration
         cat << 'EOF' > app/build.gradle.kts
