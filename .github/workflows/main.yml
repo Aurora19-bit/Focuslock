@@ -19,26 +19,87 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build Debug APK
+    - name: Reorganize Flat Files and Build
       run: |
-        # 1. Find where settings.gradle or settings.gradle.kts is located
-        SETTINGS_FILE=$(find . -maxdepth 3 -name "settings.gradle*" | head -n 1)
-        TARGET_DIR=$(dirname "$SETTINGS_FILE")
+        echo "Organizing flattened Android structure..."
         
-        echo "Found Android project inside: $TARGET_DIR"
-        cd "$TARGET_DIR"
+        # 1. Create standard Android directory tree
+        mkdir -p app/src/main/java/com/vidhya/focuslock
+        mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/xml
 
-        # 2. Generate Gradle wrapper if missing
-        if [ ! -f "gradlew" ]; then
-          gradle wrapper --gradle-version 8.7
+        # 2. Move Kotlin source files
+        mv AppListAdapter.kt BlockActivity.kt BootReceiver.kt FocusAccessibilityService.kt \
+           MainActivity.kt MathPuzzleActivity.kt SessionAdminReceiver.kt SessionManager.kt \
+           SessionTimerService.kt app/src/main/java/com/vidhya/focuslock/ 2>/dev/null || true
+
+        # 3. Move Layout XML files
+        mv activity_block.xml activity_main.xml activity_puzzle.xml item_app.xml \
+           app/src/main/res/layout/ 2>/dev/null || true
+
+        # 4. Move Resource Values XML files
+        mv strings.xml themes.xml colors.xml \
+           app/src/main/res/values/ 2>/dev/null || true
+
+        # 5. Move Configuration XML files
+        mv accessibility_service_config.xml device_admin_receiver.xml \
+           app/src/main/res/xml/ 2>/dev/null || true
+
+        # 6. Move Manifest
+        mv AndroidManifest.xml app/src/main/ 2>/dev/null || true
+
+        # 7. Configure app-level build.gradle.kts if missing
+        if [ ! -f "app/build.gradle.kts" ]; then
+          cat << 'EOF' > app/build.gradle.kts
+        plugins {
+            id("com.android.application")
+            id("org.jetbrains.kotlin.android")
+        }
+
+        android {
+            namespace = "com.vidhya.focuslock"
+            compileSdk = 34
+
+            defaultConfig {
+                applicationId = "com.vidhya.focuslock"
+                minSdk = 24
+                targetSdk = 34
+                versionCode = 1
+                versionName = "1.0"
+            }
+
+            buildTypes {
+                release {
+                    isMinifyEnabled = false
+                }
+            }
+
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+
+        dependencies {
+            implementation("androidx.core:core-ktx:1.13.1")
+            implementation("androidx.appcompat:appcompat:1.7.0")
+            implementation("com.google.android.material:material:1.12.0")
+            implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+        }
+        EOF
         fi
-        
+
+        # 8. Generate Gradle wrapper and build
+        gradle wrapper --gradle-version 8.7
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: FocusLock-APK
-        path: "**/build/outputs/apk/debug/*.apk"
-        
+        path: "app/build/outputs/apk/debug/*.apk"
